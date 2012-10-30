@@ -592,7 +592,7 @@ public class CoreferenceTester<SYS extends CoreferenceSystem> {
     //((train))
     File[] train = getData(dataPath, DataType.TRAIN, numDocs);
     //((dev/test))
-//    String dataTypeString = props.getProperty("data","dev");
+//   String dataTypeString = props.getProperty("data","dev");
     String dataTypeString = props.getProperty("data","test");
     File[] test = null;
     DataType dataType = null;
