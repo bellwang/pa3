@@ -543,7 +543,8 @@ public class CoreferenceTester<SYS extends CoreferenceSystem> {
     System.out.print("Creating model...");
     //(classname)
 //    String systemClass = props.getProperty("model","baseline");
-    String systemClass = props.getProperty("model","OneCluster");
+//    String systemClass = props.getProperty("model","OneCluster");
+    String systemClass = props.getProperty("model","AllSingleton");
     if(systemClass.equalsIgnoreCase("baseline")){ systemClass = BaselineCoreferenceSystem.class.getName(); }
     //(create)
     CoreferenceSystem system;
