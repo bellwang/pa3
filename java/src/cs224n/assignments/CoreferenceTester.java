@@ -542,7 +542,8 @@ public class CoreferenceTester<SYS extends CoreferenceSystem> {
     //--Create Coreference Class
     System.out.print("Creating model...");
     //(classname)
-    String systemClass = props.getProperty("model","baseline");
+//    String systemClass = props.getProperty("model","baseline");
+    String systemClass = props.getProperty("model","OneCluster");
     if(systemClass.equalsIgnoreCase("baseline")){ systemClass = BaselineCoreferenceSystem.class.getName(); }
     //(create)
     CoreferenceSystem system;
@@ -590,7 +591,8 @@ public class CoreferenceTester<SYS extends CoreferenceSystem> {
     //((train))
     File[] train = getData(dataPath, DataType.TRAIN, numDocs);
     //((dev/test))
-    String dataTypeString = props.getProperty("data","dev");
+//    String dataTypeString = props.getProperty("data","dev");
+    String dataTypeString = props.getProperty("data","test");
     File[] test = null;
     DataType dataType = null;
     try {
