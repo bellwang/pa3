@@ -24,7 +24,7 @@ public class OneCluster implements CoreferenceSystem {
 	public List<ClusteredMention> runCoreference(Document doc) {
 		//(variables)
 	    List<ClusteredMention> mentions = new ArrayList<ClusteredMention>();
-	    Map<String,Entity> clusters = new HashMap<String,Entity>();
+	
 	    Entity entity = null;
 	    //(for each mention...)
 	    for(int i = 0;i < doc.getMentions().size(); i++)
