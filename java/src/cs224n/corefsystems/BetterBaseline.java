@@ -18,26 +18,26 @@ public class BetterBaseline implements CoreferenceSystem {
 	private Hashtable< String, HashSet<String> > ht = new Hashtable< String, HashSet<String>>() ;
 			
 	@Override
-	  public void train(Collection<Pair<Document, List<Entity>>> trainingData) {
-	    for(Pair<Document, List<Entity>> pair : trainingData){
-	      //--Get Variables
-	      Document doc = pair.getFirst();
-	      List<Entity> clusters = pair.getSecond();
-	     
-	      for(Entity e : clusters){
-	    	  HashSet<String> heads = new HashSet<String>();
-	    	  for(Mention m : e.mentions)
-	    		  heads.add(m.headWord());
-	    	  for(String head : heads)
-	    	  {
-	    		  if(ht.contains(head))
-	    			  ht.get(head).addAll(heads);
-	    		  else
-	    			  ht.put(head, heads);
-	    	  }
-	      }
-	    }
-	  }
+	public void train(Collection<Pair<Document, List<Entity>>> trainingData) {
+		for(Pair<Document, List<Entity>> pair : trainingData){
+			//--Get Variables
+			Document doc = pair.getFirst();
+			List<Entity> clusters = pair.getSecond();
+
+			for(Entity e : clusters){
+				HashSet<String> heads = new HashSet<String>();
+				for(Mention m : e.mentions)
+					heads.add(m.headWord());
+				for(String head : heads)
+				{
+					if(ht.contains(head))
+						ht.get(head).addAll(heads);
+					else
+						ht.put(head, heads);
+				}
+			}
+		}
+	}
 
 	@Override
 	public List<ClusteredMention> runCoreference(Document doc) {
