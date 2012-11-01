@@ -12,6 +12,7 @@ import cs224n.coref.ClusteredMention;
 import cs224n.coref.Document;
 import cs224n.coref.Entity;
 import cs224n.coref.Mention;
+import cs224n.coref.Pronoun;
 import cs224n.util.Pair;
 
 public class BetterBaseline implements CoreferenceSystem {
@@ -27,7 +28,7 @@ public class BetterBaseline implements CoreferenceSystem {
 			for(Entity e : clusters){
 				HashSet<String> heads = new HashSet<String>();
 				for(Mention m : e.mentions)
-					heads.add(m.headWord());
+					heads.add(m.headToken().lemma());
 				for(String head : heads)
 				{
 					if(ht.contains(head))
@@ -38,23 +39,25 @@ public class BetterBaseline implements CoreferenceSystem {
 			}
 		}
 	}
+	
 
 	@Override
 	public List<ClusteredMention> runCoreference(Document doc) {
 	    //(variables)
-	    List<ClusteredMention> mentions = new ArrayList<ClusteredMention>();
+	    List<ClusteredMention> clusteredMentions = new ArrayList<ClusteredMention>();
 	    	    
 	    //(for each mention...)
 	    for(Mention m : doc.getMentions()){
-	    	String mentionHead = m.headWord();
+	    	String mentionHead = m.headToken().lemma();
 	    	boolean flag = false; 
-	    	for(ClusteredMention cm: mentions){
-	    		String head2 = cm.mention.headWord();
+	   
+	    	for(ClusteredMention cm: clusteredMentions){
+	    		String head2 = cm.mention.headToken().lemma();
 	    		//first check whether the two heads are equal
 	    		//if so, no need to go through the hash table
 	    		if(mentionHead.equals(head2))
 	    		{
-	    			mentions.add(m.markCoreferent(cm.entity));
+	    			clusteredMentions.add(m.markCoreferent(cm.entity));
     				flag = true;
     				break;
 	    		}
@@ -62,7 +65,7 @@ public class BetterBaseline implements CoreferenceSystem {
 	    		//to check whether the two heads are corefferenced.
 	    		if(ht.contains(mentionHead)){
 	    			if(ht.get(mentionHead).contains(head2)){
-	    				mentions.add(m.markCoreferent(cm.entity));
+	    				clusteredMentions.add(m.markCoreferent(cm.entity));
 	    				flag = true;
 	    				break;
 	    			}	    			
@@ -72,11 +75,11 @@ public class BetterBaseline implements CoreferenceSystem {
 	    	if(flag == false){
 	        //(...else create a new singleton cluster)
 	        ClusteredMention newCluster = m.markSingleton();
-	        mentions.add(newCluster);
+	        clusteredMentions.add(newCluster);
 	      }
 	    }
 	    //(return the mentions)
-	    return mentions;
+	    return clusteredMentions;
 	  }
 
 }
