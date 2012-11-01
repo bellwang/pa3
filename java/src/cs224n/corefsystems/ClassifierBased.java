@@ -106,7 +106,7 @@ public class ClassifierBased implements CoreferenceSystem {
 		// Return if two mention have similar content
 		private boolean headMatchFnc(Mention onPrix, Mention candidate) {
 			//return new Feature.HeaderMatch(onPrix.headWord().equals(candidate.headWord()));			
-			return onPrix.headToken().lemma().equals(candidate.headToken().lemma());
+			return onPrix.headToken().lemma().equalsIgnoreCase(candidate.headToken().lemma());
 		}
 
 		// Return the distance(# of mentions) of two mentions in the same document		
