@@ -47,8 +47,8 @@ public class RuleBased implements CoreferenceSystem {
 	
 	private boolean sameGroupPronoun(Mention m1, Mention m2)
 	{
-		String s1 = m1.headToken().lemma();
-		String s2 = m2.headToken().lemma();
+		String s1 = m1.headToken().lemma().toLowerCase();
+		String s2 = m2.headToken().lemma().toLowerCase();
 		for(HashSet<String> hs : pronounGroups)
 		{
 			if(hs.contains(s1)&&hs.contains(s2))
@@ -69,7 +69,7 @@ public class RuleBased implements CoreferenceSystem {
 			for(Entity e : clusters){
 				HashSet<String> heads = new HashSet<String>();
 				for(Mention m : e.mentions)
-					heads.add(m.headToken().lemma());
+					heads.add(m.headToken().lemma().toLowerCase());
 				for(String head : heads)
 				{
 					if(ht.contains(head))
@@ -89,7 +89,7 @@ public class RuleBased implements CoreferenceSystem {
 
 		HeadMatch(doc, clusteredMentions, markedMentions);
 		Hobbs(doc,clusteredMentions);
-		
+		//NER(doc, clusteredMentions);
 		
 		for(Mention m : doc.getMentions())
 		{
@@ -103,20 +103,39 @@ public class RuleBased implements CoreferenceSystem {
 	
 //	private Gender getGender(Mention m)
 //	{
-//		Name.gender(m.headToken().lemma());
+//		Name.gender(m.headToken().lemma().toLowerCase());
 //		m.headToken().
 //	}
 	
-	private void NER(Document doc, List<ClusteredMention> clusteredMentions, HashSet<Mention> markedMentions)
+	
+	private void NER(Document doc, List<ClusteredMention> clusteredMentions)
 	{
 		List<Mention> mentions = doc.getMentions();
 		for(Mention m1 : mentions)
 		{
 			if(getEntity(clusteredMentions, m1)!=null)
 				continue;
-			
+			for(Mention m2 : mentions)
+			{
+				if(m1.equals(m2))
+					continue;
+				if(m1.headToken().nerTag().equals(m2.headToken().nerTag()))
+				{
+					Entity e = getEntity(clusteredMentions, m2);
+					if(e!=null)
+					{
+						clusteredMentions.add(m1.markCoreferent(e));
+					}
+					else
+					{
+						ClusteredMention newCluster = m2.markSingleton();
+						clusteredMentions.add(newCluster);
+						clusteredMentions.add(m1.markCoreferent(newCluster.entity));
+					}
+					break;
+				}
+			}
 		}
-		
 	}
 	
 	private boolean genderCompare(Mention m1, Mention m2)
@@ -130,18 +149,70 @@ public class RuleBased implements CoreferenceSystem {
 			return true;
 	}
 	
+	private boolean SpeakerMatch(Mention m1, Mention m2)
+	{
+		if(!m1.headToken().isQuoted())
+			return false;
+		if(!m2.headToken().lemma().toLowerCase().equals(m1.headToken().speaker()))
+			return false;
+		int genderType = 0; //0 can't decide, 1 male, 2 female
+		if(Pronoun.isSomePronoun(m1.headToken().lemma().toLowerCase()))
+		{
+			int i=0;
+			for(;i<pronounGroups.size();i++)
+			{
+				if(pronounGroups.get(i).contains(m1.headToken().lemma().toLowerCase()))
+					break;
+			}
+			if(i==0)
+				genderType = 0;
+			else if(i==1)
+				genderType = 1;
+			else if(i==2)
+				genderType = 2;
+			else
+				return false;
+		}
+		String head2 = m2.headToken().lemma().toLowerCase();
+		Gender g = Name.mostLikelyGender(head2);
+		if(g == Gender.NEUTRAL)
+			return false;
+		else if(g == Gender.EITHER)
+			return true;
+		else if(g == Gender.MALE && genderType == 1)
+			return true;
+		else if(g == Gender.FEMALE && genderType == 2)
+			return true;
+		return false;
+	}
+	
+	private boolean checkAdj(Mention m1, Mention m2)
+	{
+		if(m1.headToken().isNoun() && m2.headToken().isNoun())
+		{
+			String adj1 = null, adj2 = null;
+			if(m1.headWordIndex > m1.beginIndexInclusive)
+				adj1 = m1.sentence.words.get(m1.headWordIndex-1);
+			if(m2.headWordIndex > m2.beginIndexInclusive)
+				adj2 = m2.sentence.words.get(m2.headWordIndex-1);
+			if(adj1!=null&&adj2!=null)
+			{
+				if(!adj1.toLowerCase().equals(adj2.toLowerCase()))
+					return false;
+			}
+		}
+		return true;
+	}
+	
 	private void HeadMatch(Document doc, List<ClusteredMention> clusteredMentions, HashSet<Mention> markedMentions)
 	{	    
 	    //(for each mention...)
-	    for(Mention m : doc.getMentions()){
-	    	if(getEntity(clusteredMentions, m)!=null)
+	    for(Mention m1 : doc.getMentions()){
+	    	if(getEntity(clusteredMentions, m1)!=null)
 	    		continue;
-	    	String mentionHead = m.headToken().lemma();
-	    	boolean isPronoun = false;
-	    	if(Pronoun.isSomePronoun(mentionHead))
-	    		isPronoun = true;
+	    	String mentionHead = m1.headToken().lemma().toLowerCase();
 	    	for(Mention m2: markedMentions){
-	    		String head2 = m2.headToken().lemma();
+	    		String head2 = m2.headToken().lemma().toLowerCase();
 	    		//first check whether the two heads are equal
 	    		//if so, no need to go through the hash table
 	    		boolean isCorf = false;
@@ -149,33 +220,32 @@ public class RuleBased implements CoreferenceSystem {
 	    			isCorf = true;
 	    		
 	    		//to check whether the two heads are corefferenced.
-	    		if(ht.contains(mentionHead)){
-	    			if(ht.get(mentionHead).contains(head2)){
-	    				isCorf = true;
-	    			}	    			
+	    		else if(m1.headToken().nerTag().equals(m2.headToken().nerTag())&&
+	    				ht.contains(mentionHead)&&ht.get(mentionHead).contains(head2)){
+	    				isCorf = true;	   
 	    		}
-	    		
+	    		if(SpeakerMatch(m1,m2))
+	    			isCorf = true;
 	    		if(isCorf)
 	    		{
-	    			if(isPronoun && Pronoun.isSomePronoun(m2.headToken().lemma()))
-	    			{
-	    				
-	    			}
+	    			//System.out.println("m1: "+m1.sentence.toString());
+	    			//System.out.println("m2: "+m2.sentence.toString());
+	    			System.out.println(m1.toString()+" :: "+m2.toString());
 	    			Entity e2 = getEntity(clusteredMentions, m2);
 	    			if(e2!=null)
 	    			{
-	    				clusteredMentions.add(m.markCoreferent(e2));
+	    				clusteredMentions.add(m1.markCoreferent(e2));
 	    			}
 	    			else
 	    			{
 	    				ClusteredMention newCluster = m2.markSingleton();
 	    				clusteredMentions.add(newCluster);
-	    				clusteredMentions.add(m.markCoreferent(newCluster.entity));
+	    				clusteredMentions.add(m1.markCoreferent(newCluster.entity));
 	    			}
 	    			break;
 	    		}
 	    	}
-	    	markedMentions.add(m);
+	    	markedMentions.add(m1);
 	      }
 	}
 	
@@ -186,7 +256,7 @@ public class RuleBased implements CoreferenceSystem {
 		{
 			if(getEntity(clusteredMentions, m1)!=null)
 				continue;
-			String head = m1.headToken().lemma();
+			String head = m1.headToken().lemma().toLowerCase();
 			if(Pronoun.isSomePronoun(head))
 			{
 				ArrayList<List<String>> proposed = Hobbs(m1);
@@ -195,7 +265,7 @@ public class RuleBased implements CoreferenceSystem {
 					if(m1.equals(m2)||!m1.sentence.equals(m2.sentence))
 						continue;
 
-					String head2 = m2.headToken().lemma();
+					String head2 = m2.headToken().lemma().toLowerCase();
 					boolean isCorf = false;
 					for(List<String> slist : proposed)
 					{

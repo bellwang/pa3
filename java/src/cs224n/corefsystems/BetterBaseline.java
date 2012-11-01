@@ -28,7 +28,7 @@ public class BetterBaseline implements CoreferenceSystem {
 			for(Entity e : clusters){
 				HashSet<String> heads = new HashSet<String>();
 				for(Mention m : e.mentions)
-					heads.add(m.headToken().lemma());
+					heads.add(m.headToken().lemma().toLowerCase());
 				for(String head : heads)
 				{
 					if(ht.contains(head))
@@ -48,11 +48,11 @@ public class BetterBaseline implements CoreferenceSystem {
 	    	    
 	    //(for each mention...)
 	    for(Mention m : doc.getMentions()){
-	    	String mentionHead = m.headToken().lemma();
+	    	String mentionHead = m.headToken().lemma().toLowerCase();
 	    	boolean flag = false; 
 	   
 	    	for(ClusteredMention cm: clusteredMentions){
-	    		String head2 = cm.mention.headToken().lemma();
+	    		String head2 = cm.mention.headToken().lemma().toLowerCase();
 	    		//first check whether the two heads are equal
 	    		//if so, no need to go through the hash table
 	    		if(mentionHead.equals(head2))
