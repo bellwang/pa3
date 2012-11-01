@@ -1,6 +1,7 @@
 package cs224n.corefsystems;
 
 import cs224n.coref.*;
+import cs224n.coref.Sentence.Token;
 import cs224n.util.Pair;
 import edu.stanford.nlp.classify.LinearClassifier;
 import edu.stanford.nlp.classify.LinearClassifierFactory;
@@ -33,10 +34,21 @@ public class ClassifierBased implements CoreferenceSystem {
 			 * TODO: Create a set of active features
 			 */
 
-			Feature.ExactMatch.class,
+			//Feature.ExactMatch.class,
+			
+			Feature.HeaderLemmaMatch.class,
 
+			Feature.MentionDist.class,
+			
+			Feature.SentenceDist.class,
+			
+			Feature.Pronoun.class,
+			
+			Feature.NER.class,
+			
 			//skeleton for how to create a pair feature
 			//Pair.make(Feature.IsFeature1.class, Feature.IsFeature2.class),
+			Pair.make(Feature.HeaderLemmaMatch.class, Feature.Pronoun.class),
 	});
 
 
@@ -55,19 +67,95 @@ public class ClassifierBased implements CoreferenceSystem {
 			Mention candidate = input.getSecond().mention; //the second mention (referred to as m_j in the handout)
 			Entity candidateCluster = input.getSecond().entity; //the cluster containing the second mention
 
-
 			//--Features
+			/*
 			if(clazz.equals(Feature.ExactMatch.class)){
 				//(exact string match)
-				return new Feature.ExactMatch(onPrix.gloss().equals(candidate.gloss()));
+				return new Feature.ExactMatch(onPrix.gloss().equals(candidate.gloss()));			
+			} else*/ 	
+			
+			if(clazz.equals(Feature.HeaderLemmaMatch.class)) {
+				return new Feature.HeaderLemmaMatch(headMatchFnc(onPrix, candidate));
+			
+			}else if(clazz.equals(Feature.MentionDist.class)) {
+				return new Feature.MentionDist(mentionDistance(onPrix,candidate));
+
+			} else if(clazz.equals(Feature.SentenceDist.class)) {
+				return new Feature.SentenceDist(sentenceDistance(onPrix,candidate));				
+			
+			} else if(clazz.equals(Feature.Pronoun.class)) {
+				return new Feature.Pronoun(IsPronoun(onPrix, candidate));
+			 					
+			} else if(clazz.equals(Feature.NER.class)) {
+				//return new Feature.NER(IsNER(onPrix, candidate));
+				return new Feature.NER(candidate.headToken().nerTag());
+				
 //			} else if(clazz.equals(Feature.NewFeature.class) {
-				/*
-				 * TODO: Add features to return for specific classes. Implement calculating values of features here.
-				 */
-			}
-			else {
+				
+					//TODO: Add features to return for specific classes. Implement calculating values of features here.		
+					
+//			} else if(clazz.equals(Feature.NewFeature.class) {
+				
+					//TODO: Add features to return for specific classes. Implement calculating values of features here.				
+				
+			}else {
 				throw new IllegalArgumentException("Unregistered feature: " + clazz);
 			}
+		}
+
+		// Return if two mention have similar content
+		private boolean headMatchFnc(Mention onPrix, Mention candidate) {
+			//return new Feature.HeaderMatch(onPrix.headWord().equals(candidate.headWord()));			
+			return onPrix.headToken().lemma().equals(candidate.headToken().lemma());
+		}
+
+		// Return the distance(# of mentions) of two mentions in the same document		
+		private int sentenceDistance(Mention onPrix, Mention candidate) {
+			Document locatedDoc = onPrix.doc;
+			assert(locatedDoc.equals(candidate.doc));
+			
+			List<Sentence> sentences = locatedDoc.sentences;
+			Sentence onPrix_sentence = onPrix.sentence;
+			Sentence candidate_sentence = candidate.sentence;
+			
+			int onPrix_pos = -1;
+			int candidate_pos = -1;
+			for(int i = 0; i< sentences.size(); i++){
+				if(onPrix_sentence.equals(sentences.get(i))) onPrix_pos = i;//TODO: check if use "equals" for sentence comparision
+				if(candidate_sentence.equals(sentences.get(i))) candidate_pos = i;
+				if(onPrix_pos != -1 && candidate_pos != -1) break;
+			}
+			assert(onPrix_pos != -1 && candidate_pos != -1);
+			return (onPrix_pos - candidate_pos);
+		}
+
+		// Return the distance(# of mentions) of two mentions in the same document
+		private int mentionDistance(Mention onPrix, Mention candidate) {
+			Document locatedDoc = onPrix.doc;
+			assert(locatedDoc.equals(candidate.doc));
+			
+			List<Mention> mentions = locatedDoc.getMentions();
+			int onPrix_pos = -1;
+			int candidate_pos = -1;
+			for(int i = 0; i< mentions.size(); i++){
+				if(onPrix.equals(mentions.get(i))) onPrix_pos = i;
+				if(candidate.equals(mentions.get(i))) candidate_pos = i;
+				if(onPrix_pos != -1 && candidate_pos != -1) break;
+			}
+			assert(onPrix_pos != -1 && candidate_pos != -1);
+			return (onPrix_pos - candidate_pos);
+		}
+
+		// Return if any one of the two mentions is a pronoun
+		private boolean IsPronoun(Mention onPrix, Mention candidate) {
+			//Sentence onPrix_sentence = onPrix.sentence;
+			//List<Token> tokens = onPrix_sentence.tokens;
+			return Pronoun.isSomePronoun(onPrix.gloss()) || Pronoun.isSomePronoun(candidate.gloss());
+		}
+
+		// TODO:
+		private boolean IsNER(Mention onPrix, Mention candidate) {
+			return onPrix.headToken().nerTag().equals(candidate.headToken().nerTag());
 		}
 
 		@SuppressWarnings({"unchecked"})

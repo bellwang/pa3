@@ -2,6 +2,7 @@ package cs224n.coref;
 
 import cs224n.util.Pair;
 
+import java.util.Hashtable;
 import java.util.Set;
 
 /**
@@ -100,9 +101,49 @@ public interface Feature {
   public static class ExactMatch extends Indicator {
     public ExactMatch(boolean exactMatch){ super(exactMatch); }
   }
+
+  public static class HeaderLemmaMatch extends Indicator {
+	    public HeaderLemmaMatch(boolean headerMatch){ super(headerMatch); }
+  }
+  
+  public static class MentionDist extends IntIndicator {
+	    public MentionDist(int dist){ super(dist); }
+  }  
+
+  public static class SentenceDist extends IntIndicator {
+	    public SentenceDist(int dist){ super(dist); }
+  }
+
+  public static class Pronoun extends Indicator {
+	    public Pronoun(boolean is){ super(is); }
+  }
+
+  public static class NER extends StrIndicator {
+	    public NER(String ner){ super(ner); }
+  }
   
   /*
    * TODO: Add values to the indicators here.
    */
+  //TODO
+  public static abstract class StrIndicator implements Feature {
+	    private static Hashtable<String, Integer> ht = new Hashtable<String, Integer>();
+	    private static int curCnt = 1;
+	    private int hashCnt;
+	  	public final String value;
+	  	
+	    public StrIndicator(String value){ 
+	    	this.value = new String(value); 
+	    	
+	    	if(!ht.contains(value))
+	    		ht.put(value, ++curCnt);
 
+	    	hashCnt = ht.get(value);
+	    }
+	    public boolean equals(Object o){ return o instanceof IntIndicator && o.getClass().equals(this.getClass()) && ((StrIndicator) o).value.equals(value); }
+	    public int hashCode(){ 
+	    	return this.getClass().hashCode() ^ hashCnt; 
+	    }
+	    public String toString(){ return this.getClass().getSimpleName() + "(" + value + ")"; }
+  	}
 }
