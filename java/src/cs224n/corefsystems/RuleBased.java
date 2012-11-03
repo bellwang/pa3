@@ -85,8 +85,11 @@ public class RuleBased implements CoreferenceSystem {
 	@Override
 	public List<ClusteredMention> runCoreference(Document doc) {
 		List<ClusteredMention> clusteredMentions = new ArrayList<ClusteredMention>();
+		
 		Hobbs(doc,clusteredMentions);
+		
 		HeadMatch(doc, clusteredMentions);
+		CheckSpeaker(doc, clusteredMentions);
 		NER(doc, clusteredMentions);
 		
 		for(Mention m : doc.getMentions())
@@ -98,13 +101,6 @@ public class RuleBased implements CoreferenceSystem {
 		}
 		return clusteredMentions;
 	}
-	
-//	private Gender getGender(Mention m)
-//	{
-//		Name.gender(m.headToken().lemma().toLowerCase());
-//		m.headToken().
-//	}
-	
 	
 	private void NER(Document doc, List<ClusteredMention> clusteredMentions)
 	{
@@ -139,30 +135,62 @@ public class RuleBased implements CoreferenceSystem {
 	{
 		Pair<Boolean, Boolean> r = Util.haveGenderAndAreSameGender(m1, m2);
 		if(!r.getFirst())
-			return false;
+			return true;
 		if(!r.getSecond())
 			return false;
 		else
 			return true;
 	}
 	
+	private void CheckSpeaker(Document doc, List<ClusteredMention> clusteredMentions)
+	{
+		List<Mention> mentions = doc.getMentions();
+		for(int i = 0; i< mentions.size(); i++){
+	    	Mention m1 = mentions.get(i);
+	    	if(getEntity(clusteredMentions, m1)!=null)
+	    		continue;
+	    	for(int j = i-1; j>=0; j--){
+	    		Mention m2 = mentions.get(j);
+	    		if(SpeakerMatch(m1,m2))
+				{
+					Entity e = getEntity(clusteredMentions, m2);
+					if(e!=null)
+					{
+						clusteredMentions.add(m1.markCoreferent(e));
+					}
+					else
+					{
+						ClusteredMention newCluster = m2.markSingleton();
+						clusteredMentions.add(newCluster);
+						clusteredMentions.add(m1.markCoreferent(newCluster.entity));
+					}
+					break;
+				}
+	    	}
+		}
+	}
+	
 	private boolean SpeakerMatch(Mention m1, Mention m2)
 	{
 		if(!m1.headToken().isQuoted())
 			return false;
-		if(!m2.headToken().lemma().toLowerCase().equals(m1.headToken().speaker()))
+
+		if(!m2.headToken().word().equalsIgnoreCase(m1.headToken().speaker()))
 			return false;
-		int genderType = 0; //0 can't decide, 1 male, 2 female
+		
+		int genderType = 0; 
 		if(Pronoun.isSomePronoun(m1.headToken().lemma().toLowerCase()))
 		{
 			genderType = whichPronounGroup(m1.headToken().lemma().toLowerCase());
-			if(genderType>2||genderType<0)
+			if(genderType<0)
 				return false;
 		}
+		else 
+			return false;
 		String head2 = m2.headToken().lemma().toLowerCase();
 		Gender g = Name.mostLikelyGender(head2);
-		if(g == Gender.NEUTRAL)
-			return false;
+		if(g == Gender.NEUTRAL && genderType == 6 )
+			return true;
 		else if(g == Gender.EITHER)
 			return true;
 		else if(g == Gender.MALE && genderType == 1)
@@ -235,8 +263,7 @@ public class RuleBased implements CoreferenceSystem {
 	    				ht.contains(head1)&&ht.get(head1).contains(head2)){
 	    				isCorf = true;	   
 	    		}
-	    		if(SpeakerMatch(m1,m2))
-	    			isCorf = true;
+
 	    		if(isCorf&&!checkAdj(m1,m2))
 	    		{
 	    			isCorf = false;
@@ -246,6 +273,11 @@ public class RuleBased implements CoreferenceSystem {
 	    			if(sameGroupPronoun(m1,m2))
 	    				isCorf = true;
 	    		}
+	    		if(isCorf && m1.headToken().isNoun() && m2.headToken().isNoun()
+	    				&& m1.headToken().isPluralNoun()!=m2.headToken().isPluralNoun())
+	    			isCorf = false;
+	    		
+	    		
 
 	    		if(isCorf)
 	    		{
@@ -294,37 +326,46 @@ public class RuleBased implements CoreferenceSystem {
 					{
 						if(slist.contains(m2.headWord()))
 						{
+							String pre = null, pos = null;
+							if(m2.headWordIndex>0)
+								pre = m2.sentence.words.get(m2.headWordIndex-1);
+							if(m2.headWordIndex<m2.sentence.words.size())
+								pos = m2.sentence.words.get(m2.headWordIndex+1);
+							if(!(slist.contains(pre)||slist.contains(pos)))
+								continue;
+						
 							if(m1.headToken().nerTag().equals(m2.headToken().nerTag()))
 							{
 								isCorf = true;
-								if(Pronoun.isSomePronoun(head2))
+								
+							}
+							if(Pronoun.isSomePronoun(head2))
+							{
+								if(!sameGroupPronoun(m1,m2))
 								{
-									if(!sameGroupPronoun(m1,m2))
-									{
-										isCorf = false;
-									}
+									isCorf = false;
 								}
 							}
 							//if m2 is not a pronoun
-							if(!Pronoun.isSomePronoun(head2))
+							if(!Pronoun.isSomePronoun(head2)&&m2.headToken().isNoun())
 							{
-
+								isCorf = true;
 								int pronounType = whichPronounGroup(head);
 								//if m1 is I, we, ...
-								if((pronounType==0 || pronounType==7) && m2.headToken().nerTag().equals("PERSON"))
-									isCorf = true;
+								if((pronounType==0 || pronounType==7) && !m2.headToken().nerTag().equals("PERSON"))
+									isCorf = false;
 								//if m1 is he, his, ..
-								else if(pronounType==1 && m2.headToken().nerTag().equals("PERSON") 
-										&& (Name.mostLikelyGender(m2.headToken().lemma().toLowerCase()) == Gender.MALE))
-									isCorf = true;
-								else if(pronounType==2 && m2.headToken().nerTag().equals("PERSON")
-										&& Name.mostLikelyGender(m2.headToken().lemma().toLowerCase()) == Gender.FEMALE)
-									isCorf = true;
-								else if((pronounType==5||pronounType==6||pronounType==7) && m2.headToken().isPluralNoun())
-									isCorf = true;
-								else 
+								else if(pronounType==1 && !(m2.headToken().nerTag().equals("PERSON") 
+										&& (Name.mostLikelyGender(m2.headToken().lemma().toLowerCase()) == Gender.MALE)))
+									isCorf = false;
+								else if(pronounType==2 && !(m2.headToken().nerTag().equals("PERSON")
+										&& Name.mostLikelyGender(m2.headToken().lemma().toLowerCase()) == Gender.FEMALE))
+									isCorf = false;
+								else if((pronounType==5||pronounType==6||head2.contains("all")) && !m2.headToken().isPluralNoun())
 									isCorf = false;
 							}
+							if(!genderCompare(m1,m2))
+								isCorf = false;	
 
 							if(isCorf)
 								break;
@@ -376,7 +417,6 @@ public class RuleBased implements CoreferenceSystem {
 		pathToIndex(tree, index, path);
 		//the last one (size - 1) is the word, so its parent is size - 2
 		int position = path.size()-2;
-		
 		
 		//Step 1, begin at NP
 		position = Step1(path, position);
@@ -475,9 +515,12 @@ public class RuleBased implements CoreferenceSystem {
 			return result;
 		//Step 6
 		Tree<String> X = path.get(position);
-		Tree<String> child = path.get(position + 1);
-//		if(!child.getLabel().equals("NP"))
-//			result.add(X.getYield());
+		if(X.getLabel().equals("NP"))
+		{
+			Tree<String> child = path.get(position + 1);
+			if(!child.getLabel().startsWith("N"))
+				result.add(X.getYield());
+		}
 		//Step 7
 		result.addAll(BFS_NP(path, position));
 	
@@ -486,6 +529,32 @@ public class RuleBased implements CoreferenceSystem {
 		//Step 9
 		result.addAll(Step4_9(path, position));
 		return result;
+	}
+	
+	private ArrayList<Tree<String>> getAllLeaf(Tree<String> X)
+	{
+		ArrayList<Tree<String>> leafnodes = new ArrayList<Tree<String>>();
+		LinkedList<Tree<String>> queue = new LinkedList<Tree<String>>();
+		for(Tree<String> c : X.getChildren())
+		{
+			queue.addLast(c);
+		}
+		while(!queue.isEmpty())
+		{
+			Tree<String> node = queue.removeFirst();
+			if(node.isLeaf())
+			{
+				leafnodes.add(node);
+			}
+			else
+			{
+				for(Tree<String> c : node.getChildren())
+				{
+					queue.addLast(c);
+				}
+			}
+		}
+		return leafnodes;
 	}
 	
 	private ArrayList<List<String>> BFS_NP(ArrayList<Tree<String>> path, int position)
