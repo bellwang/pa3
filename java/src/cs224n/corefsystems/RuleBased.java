@@ -87,7 +87,6 @@ public class RuleBased implements CoreferenceSystem {
 		List<ClusteredMention> clusteredMentions = new ArrayList<ClusteredMention>();
 		
 		Hobbs(doc,clusteredMentions);
-		
 		HeadMatch(doc, clusteredMentions);
 		CheckSpeaker(doc, clusteredMentions);
 		NER(doc, clusteredMentions);
@@ -111,8 +110,8 @@ public class RuleBased implements CoreferenceSystem {
 	    		continue;
 	    	for(int j = i-1; j>=0; j--){
 	    		Mention m2 = mentions.get(j);
-				if(m1.sentence.equals(m2.sentence)&&((m1.headToken().nerTag().equals("DATE")
-						&&m2.headToken().nerTag().equals("DATE"))))
+				if(m1.headToken().nerTag().equals("DATE")
+						&&m2.headToken().nerTag().equals("DATE"))
 				{
 					Entity e = getEntity(clusteredMentions, m2);
 					if(e!=null)
@@ -258,7 +257,7 @@ public class RuleBased implements CoreferenceSystem {
 	    		if(head1.equals(head2))
 	    			isCorf = true;
 	    		
-	    		//to check whether the two heads are corefferenced.
+	    		//to check whether the two heads are coreferred.
 	    		else if(m1.headToken().nerTag().equals(m2.headToken().nerTag())&&
 	    				ht.contains(head1)&&ht.get(head1).contains(head2)){
 	    				isCorf = true;	   
@@ -268,24 +267,15 @@ public class RuleBased implements CoreferenceSystem {
 	    		{
 	    			isCorf = false;
 	    		}
-	    		if(Pronoun.isSomePronoun(head1)&&Pronoun.isSomePronoun(head2))
+	    		if(Pronoun.isSomePronoun(head1)&&Pronoun.isSomePronoun(head2)&&sameGroupPronoun(m1,m2))
 	    		{
-	    			if(sameGroupPronoun(m1,m2))
-	    				isCorf = true;
+	    			isCorf = true;
 	    		}
 	    		if(isCorf && m1.headToken().isNoun() && m2.headToken().isNoun()
 	    				&& m1.headToken().isPluralNoun()!=m2.headToken().isPluralNoun())
 	    			isCorf = false;
-	    		
-	    		
-
 	    		if(isCorf)
 	    		{
-//	    			System.out.println("m1: "+m1.sentence.toString());
-//	    			System.out.println("m2: "+m2.sentence.toString());
-//	    			System.out.println(m1.toString()+" :: "+m2.toString());
-//	    			System.out.println(m1.parse.getPreTerminalYield().toString());
-//	    			System.out.println(m2.parse.getPreTerminalYield().toString());
 	    			Entity e2 = getEntity(clusteredMentions, m2);
 	    			if(e2!=null)
 	    			{
@@ -299,7 +289,6 @@ public class RuleBased implements CoreferenceSystem {
 	    			}
 	    			break;
 	    		}
-//	    		System.out.println(m1.toString()+" :: "+m2.toString());
 	    	}
 	      }
 	}
@@ -334,17 +323,11 @@ public class RuleBased implements CoreferenceSystem {
 							if(!(slist.contains(pre)||slist.contains(pos)))
 								continue;
 						
-							if(m1.headToken().nerTag().equals(m2.headToken().nerTag()))
+							if(!Pronoun.isSomePronoun(head2)&&!m2.headToken().isNoun()&&!Name.isName(head2))
+								continue;
+							if(Pronoun.isSomePronoun(head2) && !sameGroupPronoun(m1,m2))
 							{
-								isCorf = true;
-								
-							}
-							if(Pronoun.isSomePronoun(head2))
-							{
-								if(!sameGroupPronoun(m1,m2))
-								{
-									isCorf = false;
-								}
+								isCorf = false;
 							}
 							//if m2 is not a pronoun
 							if(!Pronoun.isSomePronoun(head2)&&m2.headToken().isNoun())
