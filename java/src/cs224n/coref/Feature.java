@@ -105,6 +105,10 @@ public interface Feature {
   public static class HeaderLemmaMatch extends Indicator {
 	    public HeaderLemmaMatch(boolean headerMatch){ super(headerMatch); }
   }
+
+  public static class MentionCoref extends Indicator {
+	    public MentionCoref(boolean corefMatch){ super(corefMatch); }
+  }
   
   public static class MentionDist extends IntIndicator {
 	    public MentionDist(int dist){ super(dist); }
@@ -118,9 +122,34 @@ public interface Feature {
 	    public Pronoun(boolean is){ super(is); }
   }
 
+  public static class ParsePath extends StrIndicator {
+	    public ParsePath(String path){ super(path); }
+  }
+  
   public static class NER extends StrIndicator {
 	    public NER(String ner){ super(ner); }
   }
+  
+  //Additional Features
+  public static class DefNP extends Indicator {
+	    public DefNP(boolean is){ super(is); }
+  }
+ 
+  public static class DemNP extends Indicator {
+	    public DemNP(boolean is){ super(is); }
+  }  
+  
+  public static class NumAgreement extends Indicator {
+	    public NumAgreement(boolean is){ super(is); }
+  }
+
+  public static class GenderAgreement extends Indicator {
+	    public GenderAgreement(boolean is){ super(is); }
+  }  
+
+  public static class ProperNoun extends Indicator {
+	    public ProperNoun(boolean is){ super(is); }
+  }  
   
   /*
    * TODO: Add values to the indicators here.

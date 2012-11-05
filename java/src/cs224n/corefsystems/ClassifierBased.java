@@ -36,20 +36,40 @@ public class ClassifierBased implements CoreferenceSystem {
 
 			//Feature.ExactMatch.class,
 			
-			Feature.HeaderLemmaMatch.class,
+			//Feature.HeaderLemmaMatch.class,
 
-			Feature.MentionDist.class,
+			Feature.MentionCoref.class,
 			
-			Feature.SentenceDist.class,
+			//Feature.MentionDist.class,
+			
+			//Feature.SentenceDist.class,
 			
 			Feature.Pronoun.class,
 			
+			//Feature.ParsePath.class,
+			
 			Feature.NER.class,
+			
+			/*
+			 * Additional Features
+			 */
+			Feature.DefNP.class,
+			
+			Feature.DemNP.class,
+			
+			Feature.NumAgreement.class,
+			
+			//Feature.GenderAgreement.class,
+			
+			Feature.ProperNoun.class,
 			
 			//skeleton for how to create a pair feature
 			//Pair.make(Feature.IsFeature1.class, Feature.IsFeature2.class),
-			Pair.make(Feature.HeaderLemmaMatch.class, Feature.Pronoun.class),
+			//Pair.make(Feature.MentionCoref.class, Feature.Pronoun.class),
 	});
+
+
+	protected static final String PonPrix = null;
 
 
 	private LinearClassifier<Boolean,Feature> classifier;
@@ -68,15 +88,15 @@ public class ClassifierBased implements CoreferenceSystem {
 			Entity candidateCluster = input.getSecond().entity; //the cluster containing the second mention
 
 			//--Features
-			/*
 			if(clazz.equals(Feature.ExactMatch.class)){
-				//(exact string match)
-				return new Feature.ExactMatch(onPrix.gloss().equals(candidate.gloss()));			
-			} else*/ 	
-			
-			if(clazz.equals(Feature.HeaderLemmaMatch.class)) {
+				return new Feature.ExactMatch(onPrix.gloss().equals(candidate.gloss()));	
+				
+			} else if(clazz.equals(Feature.HeaderLemmaMatch.class)) {
 				return new Feature.HeaderLemmaMatch(headMatchFnc(onPrix, candidate));
-			
+
+			} else if(clazz.equals(Feature.MentionCoref.class)) {
+				return new Feature.MentionCoref(isCoref(onPrix, candidate, candidateCluster));
+				
 			}else if(clazz.equals(Feature.MentionDist.class)) {
 				return new Feature.MentionDist(mentionDistance(onPrix,candidate));
 
@@ -90,25 +110,50 @@ public class ClassifierBased implements CoreferenceSystem {
 				//return new Feature.NER(IsNER(onPrix, candidate));
 				return new Feature.NER(candidate.headToken().nerTag());
 				
-//			} else if(clazz.equals(Feature.NewFeature.class) {
+			} else if(clazz.equals(Feature.ParsePath.class)) {
+				return new Feature.ParsePath(getPath(onPrix, candidate));
 				
-					//TODO: Add features to return for specific classes. Implement calculating values of features here.		
-					
-//			} else if(clazz.equals(Feature.NewFeature.class) {
+			//Additional Features
+			} else if(clazz.equals(Feature.DefNP.class)) {
+				return new Feature.DefNP(IsDefNP(onPrix));
 				
-					//TODO: Add features to return for specific classes. Implement calculating values of features here.				
+			} else if(clazz.equals(Feature.DemNP.class)) {
+				return new Feature.DemNP(IsDemNP(onPrix));
+				
+			} else if(clazz.equals(Feature.NumAgreement.class)) {
+				return new Feature.NumAgreement(agreeNum(onPrix, candidate));
+				
+			} else if(clazz.equals(Feature.GenderAgreement.class)) {
+				return new Feature.GenderAgreement(genderAgree(onPrix, candidate));
+				
+			} else if(clazz.equals(Feature.ProperNoun.class)) {
+				return new Feature.ProperNoun(isBothPN(onPrix, candidate));
+				
+			//} else if(clazz.equals(Feature.NewFeature.class)) {
+			//TODO: Add features to return for specific classes. Implement calculating values of features here.				
+
+			//} else if(clazz.equals(Feature.NewFeature.class)) {
+			//TODO: Add features to return for specific classes. Implement calculating values of features here.				
 				
 			}else {
 				throw new IllegalArgumentException("Unregistered feature: " + clazz);
 			}
 		}
 
+		/*
+		 * Helper Methods 
+		 */
 		// Return if two mention have similar content
 		private boolean headMatchFnc(Mention onPrix, Mention candidate) {
 			//return new Feature.HeaderMatch(onPrix.headWord().equals(candidate.headWord()));			
 			return onPrix.headToken().lemma().equalsIgnoreCase(candidate.headToken().lemma());
 		}
 
+		// Return if onPrix mention belongs to the candidateCluster
+		private boolean isCoref(Mention onPrix, Mention candidate, Entity candidateCluster) {
+			return headMatchFnc(onPrix, candidate)  || candidateCluster.mentions.contains(onPrix);
+		}
+		
 		// Return the distance(# of mentions) of two mentions in the same document		
 		private int sentenceDistance(Mention onPrix, Mention candidate) {
 			Document locatedDoc = onPrix.doc;
@@ -126,7 +171,8 @@ public class ClassifierBased implements CoreferenceSystem {
 				if(onPrix_pos != -1 && candidate_pos != -1) break;
 			}
 			assert(onPrix_pos != -1 && candidate_pos != -1);
-			return (onPrix_pos - candidate_pos);
+			//return (onPrix_pos - candidate_pos);
+			return Math.abs( onPrix.doc.indexOfSentence(onPrix.sentence) - onPrix.doc.indexOfSentence(candidate.sentence) );
 		}
 
 		// Return the distance(# of mentions) of two mentions in the same document
@@ -143,13 +189,12 @@ public class ClassifierBased implements CoreferenceSystem {
 				if(onPrix_pos != -1 && candidate_pos != -1) break;
 			}
 			assert(onPrix_pos != -1 && candidate_pos != -1);
-			return (onPrix_pos - candidate_pos);
+			//return (onPrix_pos - candidate_pos);
+			return Math.abs( onPrix.doc.indexOfMention(onPrix) - onPrix.doc.indexOfMention(candidate) );
 		}
 
 		// Return if any one of the two mentions is a pronoun
 		private boolean IsPronoun(Mention onPrix, Mention candidate) {
-			//Sentence onPrix_sentence = onPrix.sentence;
-			//List<Token> tokens = onPrix_sentence.tokens;
 			return Pronoun.isSomePronoun(onPrix.gloss()) || Pronoun.isSomePronoun(candidate.gloss());
 		}
 
@@ -157,6 +202,37 @@ public class ClassifierBased implements CoreferenceSystem {
 		private boolean IsNER(Mention onPrix, Mention candidate) {
 			return onPrix.headToken().nerTag().equals(candidate.headToken().nerTag());
 		}
+
+		// Return the path between onPrix and candidate mentions
+		private String getPath(Mention onPrix, Mention candidate) {
+			if( !onPrix.sentence.equals(candidate.sentence) )
+				return "";
+			
+			String rnt_path = new String();
+			rnt_path += onPrix.sentence.parse.pathToIndex(onPrix.headWordIndex);
+			rnt_path += candidate.sentence.parse.pathToIndex(onPrix.headWordIndex);
+			return rnt_path;
+		}
+		
+		private boolean IsDemNP(Mention onPrix) {
+			return onPrix.headToken().isNoun() && ( onPrix.gloss().startsWith("this") || onPrix.gloss().startsWith("This") || onPrix.gloss().startsWith("that") || onPrix.gloss().startsWith("That") || onPrix.gloss().startsWith("those") || onPrix.gloss().startsWith("Those") || onPrix.gloss().startsWith("these") || onPrix.gloss().startsWith("These"));
+		}
+		
+		private boolean IsDefNP(Mention onPrix) {
+			return onPrix.headToken().isNoun() && ( onPrix.gloss().startsWith("the") || onPrix.gloss().startsWith("The") );
+		}
+
+		private boolean agreeNum(Mention onPrix, Mention candidate) {
+			return (onPrix.headToken().isPluralNoun() && candidate.headToken().isPluralNoun()) || (candidate.headToken().isPluralNoun() && candidate.headToken().isPluralNoun());
+		}
+		
+		private boolean genderAgree(Mention onPrix, Mention candidate) {
+			return Name.mostLikelyGender(onPrix.headWord()).isCompatible(Name.mostLikelyGender(candidate.headWord()));
+		}
+		
+		private boolean isBothPN(Mention onPrix, Mention candidate) {
+			return onPrix.headToken().isProperNoun() && candidate.headToken().isProperNoun();
+		}		
 
 		@SuppressWarnings({"unchecked"})
 		@Override
