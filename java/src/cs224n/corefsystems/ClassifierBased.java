@@ -1,6 +1,7 @@
 package cs224n.corefsystems;
 
 import cs224n.coref.*;
+import cs224n.coref.Feature.GenderAgreement;
 import cs224n.coref.Sentence.Token;
 import cs224n.util.Pair;
 import edu.stanford.nlp.classify.LinearClassifier;
@@ -44,28 +45,30 @@ public class ClassifierBased implements CoreferenceSystem {
 			
 			//Feature.SentenceDist.class,
 			
-			Feature.Pronoun.class,
+			//Feature.Pronoun.class,
 			
-			//Feature.ParsePath.class,
+			Feature.ParsePath.class,
 			
 			Feature.NER.class,
 			
 			/*
 			 * Additional Features
 			 */
-			Feature.DefNP.class,
+			//Feature.DefNP.class,
 			
-			Feature.DemNP.class,
+			//Feature.DemNP.class,
 			
-			Feature.NumAgreement.class,
+			//Feature.NumAgreement.class,
 			
 			//Feature.GenderAgreement.class,
 			
-			Feature.ProperNoun.class,
+			//Feature.ProperNoun.class,
 			
 			//skeleton for how to create a pair feature
-			//Pair.make(Feature.IsFeature1.class, Feature.IsFeature2.class),
-			//Pair.make(Feature.MentionCoref.class, Feature.Pronoun.class),
+			Pair.make(Feature.MentionDist.class, Feature.SentenceDist.class),
+			Pair.make(Feature.DefNP.class, Feature.DemNP.class),
+			Pair.make(Feature.Pronoun.class, Feature.ProperNoun.class),
+			Pair.make(Feature.NumAgreement.class, GenderAgreement.class),
 	});
 
 
